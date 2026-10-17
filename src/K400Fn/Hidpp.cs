@@ -83,6 +83,12 @@ internal sealed class HidppDevice
         return index == 0 ? null : index;
     }
 
+    /// <summary>Low-level feature call, used by the touchpad/gesture helpers.</summary>
+    public HidppReply? FeatureRequest(byte featureIndex, byte function, params byte[] parameters)
+    {
+        return Request(featureIndex, function, parameters, timeoutMs: 800, attempts: 1);
+    }
+
     /// <summary>Finds the Fn-inversion feature. Newer K400 Plus firmware uses 0x40A2.</summary>
     public (byte Index, ushort Id)? FindFnInversionFeature()
     {

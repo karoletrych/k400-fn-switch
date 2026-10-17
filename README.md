@@ -1,7 +1,8 @@
 # K400 Fn Switch
 
 A tiny tool that switches the Logitech K400 Plus F-key row between standard
-**F1-F12** keys and **media/special** keys — without Logi Options+.
+**F1-F12** keys and **media/special** keys — without Logi Options+. It can also
+restore the touchpad's two-finger scrolling after Logi Options+ is closed.
 
 - **Windows:** self-contained `K400Fn.exe` (no .NET runtime needed).
 - **Linux:** small bash script using `/dev/hidraw` (see [Linux](#linux)).
@@ -31,6 +32,9 @@ K400Fn media           Make the media/special keys primary
 K400Fn toggle          Flip the current mode
 K400Fn status          Show the current mode
 K400Fn status -v       Also show HID discovery details
+K400Fn touchpad        Restore two-finger scrolling after quitting Logi Options+
+K400Fn touchpad status Show the touchpad gesture state
+K400Fn auto            F-keys + touchpad restore (used by the auto task)
 K400Fn fkeys --quiet   Silent, for Task Scheduler
 K400Fn --help          Show help
 ```
@@ -62,8 +66,43 @@ For keyboards that forget the setting after sleeping, the zip also includes:
   15 minutes while you are logged on.
 - `Remove auto F-keys.cmd` — removes that scheduled task.
 
-The scheduled task forces F-keys. Remove it if you want to keep media keys
+The scheduled task runs `K400Fn.exe auto --quiet`, which sets F-keys and
+restores the touchpad gestures. Remove it if you want to keep media keys
 selected for a while.
+
+## Touchpad scrolling (Windows)
+
+Logi Options+ handles two-finger scrolling through a HID++ gesture called
+`SCROLL_2_FINGER_STATELESS` (gesture 44). When Options+ is closed or killed, it
+can leave that gesture **diverted** to the host software. The touchpad then
+sends HID++ notifications instead of normal wheel events, and scrolling stops.
+
+Run:
+
+```powershell
+.\K400Fn.exe touchpad
+```
+
+This:
+
+- un-diverts the scroll gesture so the keyboard's firmware handles it again,
+- enables both vertical and horizontal two-finger scroll,
+- makes sure raw touchpad reporting is off.
+
+Check the state without changing anything:
+
+```powershell
+.\K400Fn.exe touchpad status
+.\K400Fn.exe touchpad status -v
+```
+
+`K400Fn.exe auto` does the F-key switch **and** the touchpad fix in one go.
+This is also what the optional scheduled task runs.
+
+Some users also report that holding **Fn** and tapping the left and right
+touchpad buttons a couple of times re-enables the hidden gesture flag. You can
+try that first; `K400Fn.exe touchpad` does the same kind of repair through
+HID++.
 
 ## Linux
 
@@ -137,12 +176,13 @@ software, which is what this project replaces.
 
 Some K400 Plus firmware resets the Fn inversion setting after a long period of
 inactivity or when the keyboard is switched off. This is a keyboard firmware
-behavior, not something the tool can permanently override.
+behavior, not something the tool can permanently override. The same wake-up can
+also drop the touchpad gesture diversion, so the auto task runs both fixes.
 
 If your keyboard forgets the setting, run the tool again (`K400Fn.exe` on
 Windows, `k400-fn fkeys` on Linux). The Windows release zip includes
 `Use F-keys.cmd`, which you can pin to the taskbar or Start menu. You can also
-schedule `K400Fn.exe fkeys --quiet` with Task Scheduler (or use the included
+schedule `K400Fn.exe auto --quiet` with Task Scheduler (or use the included
 `Auto F-keys.cmd`).
 
 The setting is still a real device setting: it is not lost when you unplug the
@@ -161,6 +201,10 @@ The keyboard is a HID++ 2.0 device. The tool:
 4. Reads or writes the one-byte mode:
    - `0` = F1-F12 are primary
    - `1` = media/special keys are primary
+
+For the touchpad fix, it looks up `GESTURE_2` (`0x6501`), finds the
+`SCROLL_2_FINGER_STATELESS` gesture, and clears its "diverted to software" bit.
+It also enables the vertical and horizontal two-finger scroll gestures.
 
 The protocol details and example packets are in
 [docs/protocol.md](docs/protocol.md).

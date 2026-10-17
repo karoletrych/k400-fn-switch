@@ -5,7 +5,7 @@ namespace K400Fn;
 
 internal static class Program
 {
-    private const string Version = "1.1.0";
+    private const string Version = "1.2.0";
 
     [DllImport("kernel32.dll")]
     private static extern uint GetConsoleProcessList(uint[] processList, uint processCount);
@@ -28,6 +28,8 @@ internal static class Program
         bool status = false;
         bool verbose = false;
         bool pause = false;
+        bool touchpad = false;
+        bool auto = false;
 
         foreach (string raw in args)
         {
@@ -63,6 +65,17 @@ internal static class Program
                     status = true;
                     toggle = false;
                     target = null;
+                    break;
+
+                case "touchpad":
+                case "gestures":
+                case "scroll":
+                    touchpad = true;
+                    break;
+
+                case "auto":
+                    auto = true;
+                    touchpad = true;
                     break;
 
                 case "-v":
@@ -109,12 +122,36 @@ internal static class Program
         int exitCode;
         try
         {
-            exitCode = FnSwitcher.Run(
-                status ? null : target,
-                toggle,
-                verbose,
-                output,
-                error);
+            if (auto)
+            {
+                int fnResult = FnSwitcher.Run(
+                    FnMode.FunctionKeys,
+                    false,
+                    verbose,
+                    output,
+                    error);
+
+                int touchpadResult = Touchpad.Run(
+                    statusOnly: false,
+                    verbose,
+                    output,
+                    error);
+
+                exitCode = fnResult != 0 ? fnResult : touchpadResult;
+            }
+            else if (touchpad)
+            {
+                exitCode = Touchpad.Run(status, verbose, output, error);
+            }
+            else
+            {
+                exitCode = FnSwitcher.Run(
+                    status ? null : target,
+                    toggle,
+                    verbose,
+                    output,
+                    error);
+            }
         }
         catch (Exception ex)
         {
@@ -165,6 +202,12 @@ internal static class Program
               media      Make the media/special keys primary
               toggle     Flip between the two modes
               status     Show the current mode
+              touchpad   Restore touchpad gestures after quitting Logi Options+
+              auto       F-keys + touchpad restore (used by the auto task)
+
+            Touchpad options:
+              touchpad status   Show touchpad gesture state
+              touchpad -v       Show every gesture in the table
 
             Options:
               -v, --verbose   Show HID discovery details
@@ -177,8 +220,9 @@ internal static class Program
               K400Fn                 Use standard F1-F12 keys
               K400Fn media           Use media keys by default
               K400Fn status          Show what the keyboard is doing now
-              K400Fn toggle -v        Flip the mode and show discovery details
-              K400Fn fkeys --quiet    Silent, for Task Scheduler
+              K400Fn touchpad        Restore two-finger scrolling
+              K400Fn toggle -v       Flip the mode and show discovery details
+              K400Fn auto --quiet    F-keys + touchpad, for Task Scheduler
 
             The setting is stored by the keyboard. Some K400 Plus firmware
             resets it after a long idle period; run the tool again if that

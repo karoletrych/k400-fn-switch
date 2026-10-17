@@ -138,6 +138,55 @@ empty receiver slots:
 10 FF 8F 00 0B 01 00   # receiver itself does not implement getFeature
 ```
 
+## Touchpad gestures (Windows)
+
+Logi Options+ handles two-finger scrolling for the K400 Plus through the
+`GESTURE_2` feature (`0x6501`). The feature exposes a table of gestures, each
+with an "enabled" bit and (optionally) a "diverted" bit.
+
+- **Enabled**: the keyboard firmware produces the gesture.
+- **Diverted**: the keyboard sends a HID++ notification and leaves it to host
+  software. If the host software is not running, the gesture does nothing.
+
+The relevant gesture IDs are:
+
+| ID | Name | Notes |
+| --- | --- | --- |
+| 41 | `SCROLL_2_FINGER` | generic two-finger scroll |
+| 42 | `SCROLL_2_FINGER_HORIZONTAL` | horizontal wheel |
+| 43 | `SCROLL_2_FINGER_VERTICAL` | vertical wheel |
+| 44 | `SCROLL_2_FINGER_STATELESS` | the gesture Logi Options+ diverts for smooth scrolling |
+
+When Logi Options+ is killed, it can leave gesture 44 **diverted**. The touchpad
+then sends HID++ notifications instead of normal wheel events, so Windows stops
+scrolling. The fix is to clear the diverted bit and make sure gestures 42 and 43
+are enabled:
+
+```text
+GESTURE_2 function 0: get gesture table fields
+GESTURE_2 function 1: get enabled state
+GESTURE_2 function 2: set enabled state
+GESTURE_2 function 3: get diverted state
+GESTURE_2 function 4: set diverted state
+```
+
+The gesture table is read in 16-byte chunks. Each field is two bytes
+(`field_high`, `field_low`); a gesture field has bit 7 set in `field_high`, and
+the gesture ID is `field_low`. Enabled/diverted state uses a bit index:
+`offset = index >> 3`, `mask = 1 << (index % 8)`.
+
+To un-divert gesture 44:
+
+```text
+request:  11 01 0D 4B <offset> 01 <mask> 00 ...
+response: 00 01 08 ...
+```
+
+The exact `offset`/`mask` depend on the gesture's position in the table; the
+tool reads the table and computes them. It also sets the touchpad raw-report
+state (`0x6100`, function 2) to `0` so the firmware, not host software, handles
+the gestures.
+
 ## Notes
 
 - The older short-report command used by `h8man/k400p-fn-lock-win`
