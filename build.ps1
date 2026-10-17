@@ -37,3 +37,15 @@ if (Test-Path $zip) {
 
 Compress-Archive -Path (Join-Path $dist '*') -DestinationPath $zip
 Write-Host "Built $zip"
+
+$linuxTar = Join-Path $artifacts 'k400-fn-switch-linux.tar.gz'
+if (Test-Path $linuxTar) {
+    Remove-Item $linuxTar -Force
+}
+
+# Use git archive so the executable bits on the Linux scripts are preserved.
+git archive --format=tgz --output="$linuxTar" HEAD linux
+if ($LASTEXITCODE -ne 0) {
+    throw "git archive failed with exit code $LASTEXITCODE"
+}
+Write-Host "Built $linuxTar"

@@ -1,0 +1,13 @@
+# Allow the active local user to access Logitech hidraw devices.
+# This is what lets k400-fn run without sudo.
+#
+# Install:
+#   sudo cp 70-k400-fn.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger
+#
+# If your system does not use systemd-logind/uaccess, replace TAG+="uaccess"
+# with MODE="0666" (less secure) or add your user to the group that owns the
+# device.
+
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", TAG+="uaccess"

@@ -5,7 +5,7 @@ namespace K400Fn;
 
 internal static class Program
 {
-    private const string Version = "1.0.1";
+    private const string Version = "1.1.0";
 
     [DllImport("kernel32.dll")]
     private static extern uint GetConsoleProcessList(uint[] processList, uint processCount);

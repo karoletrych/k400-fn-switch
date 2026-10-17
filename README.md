@@ -1,13 +1,15 @@
 # K400 Fn Switch
 
-A tiny Windows command-line tool that switches the Logitech K400 Plus F-key row
-between standard **F1-F12** keys and **media/special** keys — without Logi
-Options+.
+A tiny tool that switches the Logitech K400 Plus F-key row between standard
+**F1-F12** keys and **media/special** keys — without Logi Options+.
 
-**No installation. No background service. No admin rights. No network access.**
-The setting is written to the keyboard itself. On some K400 Plus firmware it is
-forgotten when the keyboard sleeps or is powered off, in which case just run the
-tool again (the included shortcut makes that a double-click).
+- **Windows:** self-contained `K400Fn.exe` (no .NET runtime needed).
+- **Linux:** small bash script using `/dev/hidraw` (see [Linux](#linux)).
+
+**Windows:** no installation, no background service, no admin rights, no network
+access. The setting is written to the keyboard itself. On some K400 Plus
+firmware it is forgotten when the keyboard sleeps or is powered off, in which
+case just run the tool again (the included shortcut makes that a double-click).
 
 [Download the latest release](https://github.com/karoletrych/k400-fn-switch/releases/latest)
 
@@ -63,6 +65,58 @@ For keyboards that forget the setting after sleeping, the zip also includes:
 The scheduled task forces F-keys. Remove it if you want to keep media keys
 selected for a while.
 
+## Linux
+
+The Linux version is a single bash script that talks to `/dev/hidraw` directly.
+It uses the same HID++ command as the Windows build, discovers the feature and
+device index, and falls back to the known K400 Plus values (feature 9,
+device 1) if discovery does not answer.
+
+### Install
+
+Grab `k400-fn-switch-linux.tar.gz` from the release, or download the three
+files from the `linux/` directory:
+
+```bash
+tar -xzf k400-fn-switch-linux.tar.gz
+cd linux
+sudo bash install.sh
+k400-fn fkeys
+k400-fn media
+k400-fn status
+```
+
+The installer copies the script to `/usr/local/bin/k400-fn` and installs a udev
+rule that lets your logged-in user access Logitech hidraw devices. Without the
+udev rule, run the script with `sudo`.
+
+Run it without installing:
+
+```bash
+bash k400-fn.sh fkeys
+```
+
+(If you prefer `./k400-fn.sh`, run `chmod +x k400-fn.sh` first.)
+
+Useful commands:
+
+```bash
+k400-fn fkeys --dry-run     # show the node and bytes, do not write
+k400-fn --help
+```
+
+To re-apply F-keys after the keyboard sleeps, add a cron entry:
+
+```cron
+*/15 * * * * /usr/local/bin/k400-fn fkeys --quiet
+```
+
+**Linux status:** the script is tested at the protocol level with a simulated
+hidraw endpoint, including discovery, read, set and verification. It has not
+yet been tested on a physical Linux machine in this repository. The command is
+the same one used by the long-standing Solaar/udev-rule approach. Feedback and
+patches from Linux users are welcome.
+
 ## Supported hardware
 
 Tested with:
@@ -85,10 +139,11 @@ Some K400 Plus firmware resets the Fn inversion setting after a long period of
 inactivity or when the keyboard is switched off. This is a keyboard firmware
 behavior, not something the tool can permanently override.
 
-If your keyboard forgets the setting, run `K400Fn.exe` again. The release zip
-includes `Use F-keys.cmd`, which you can pin to the taskbar or Start menu. You
-can also schedule `K400Fn.exe fkeys --quiet` with Task Scheduler if you want it
-re-applied automatically.
+If your keyboard forgets the setting, run the tool again (`K400Fn.exe` on
+Windows, `k400-fn fkeys` on Linux). The Windows release zip includes
+`Use F-keys.cmd`, which you can pin to the taskbar or Start menu. You can also
+schedule `K400Fn.exe fkeys --quiet` with Task Scheduler (or use the included
+`Auto F-keys.cmd`).
 
 The setting is still a real device setting: it is not lost when you unplug the
 receiver, close the tool, or reboot Windows. It only resets when the keyboard
@@ -98,7 +153,8 @@ firmware decides to reset it.
 
 The keyboard is a HID++ 2.0 device. The tool:
 
-1. Finds the Logitech vendor HID collection (usage page `0xFF00`).
+1. Finds the Logitech HID++ interface (the vendor collection with usage page
+   `0xFF00` on Windows; a `/dev/hidraw` node on Linux).
 2. Finds the K400 Plus behind the Unifying/Bolt receiver.
 3. Looks up the `NEW_FN_INVERSION` feature (`0x40A2`) or the older
    `FN_INVERSION` feature (`0x40A0`).
@@ -123,13 +179,15 @@ dotnet build .\src\K400Fn\K400Fn.csproj
 dotnet run --project .\src\K400Fn\K400Fn.csproj -- status
 ```
 
-Or build the release zip:
+Or build the release files:
 
 ```powershell
 .\build.ps1
 ```
 
-The result is `artifacts\k400-fn-switch-win-x64.zip`.
+The result is `artifacts\k400-fn-switch-win-x64.zip` and
+`artifacts\k400-fn-switch-linux.tar.gz`. The Linux script itself needs no
+build; run it from `linux/`.
 
 ## Troubleshooting
 
