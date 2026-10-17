@@ -1,13 +1,28 @@
+using System.Runtime.InteropServices;
 using K400Fn.Hidpp;
 
 namespace K400Fn;
 
 internal static class Program
 {
-    private const string Version = "1.0.0";
+    private const string Version = "1.0.1";
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetConsoleProcessList(uint[] processList, uint processCount);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetConsoleWindow();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
     private static int Main(string[] args)
     {
+        bool quiet = args.Any(arg => arg is "-q" or "--quiet");
+        if (quiet)
+            HideOwnConsole();
+
         FnMode? target = FnMode.FunctionKeys;
         bool toggle = false;
         bool status = false;
@@ -59,6 +74,11 @@ internal static class Program
                     pause = true;
                     break;
 
+                case "-q":
+                case "--quiet":
+                    quiet = true;
+                    break;
+
                 case "-h":
                 case "--help":
                 case "/?":
@@ -83,6 +103,9 @@ internal static class Program
         if (args.Length == 0)
             target = FnMode.FunctionKeys;
 
+        TextWriter output = quiet ? TextWriter.Null : Console.Out;
+        TextWriter error = quiet ? TextWriter.Null : Console.Error;
+
         int exitCode;
         try
         {
@@ -90,25 +113,41 @@ internal static class Program
                 status ? null : target,
                 toggle,
                 verbose,
-                Console.Out,
-                Console.Error);
+                output,
+                error);
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Error: {ex.Message}");
+            error.WriteLine($"Error: {ex.Message}");
             if (verbose)
-                Console.Error.WriteLine(ex);
+                error.WriteLine(ex);
             exitCode = 1;
         }
 
-        if (pause && !Console.IsInputRedirected)
+        if (pause && !quiet && !Console.IsInputRedirected)
         {
-            Console.WriteLine();
-            Console.Write("Press any key to exit...");
+            output.WriteLine();
+            output.Write("Press any key to exit...");
             Console.ReadKey(intercept: true);
         }
 
         return exitCode;
+    }
+
+    /// <summary>
+    /// Hides the console only when this process owns it (for example when the
+    /// scheduled task starts it). A shared terminal is left alone.
+    /// </summary>
+    private static void HideOwnConsole()
+    {
+        uint[] processes = new uint[2];
+        uint count = GetConsoleProcessList(processes, (uint)processes.Length);
+        if (count > 1)
+            return;
+
+        IntPtr window = GetConsoleWindow();
+        if (window != IntPtr.Zero)
+            ShowWindow(window, 0); // SW_HIDE
     }
 
     private static void PrintHelp()
@@ -129,6 +168,7 @@ internal static class Program
 
             Options:
               -v, --verbose   Show HID discovery details
+              -q, --quiet     No output (and hide the console if owned)
                   --pause     Wait for a key press before exiting
               -h, --help      Show this help
                   --version   Show the version
@@ -138,9 +178,11 @@ internal static class Program
               K400Fn media           Use media keys by default
               K400Fn status          Show what the keyboard is doing now
               K400Fn toggle -v        Flip the mode and show discovery details
+              K400Fn fkeys --quiet    Silent, for Task Scheduler
 
-            The setting is stored in the keyboard, so it survives reboots and
-            does not need a background program.
+            The setting is stored by the keyboard. Some K400 Plus firmware
+            resets it after a long idle period; run the tool again if that
+            happens.
             """);
     }
 }

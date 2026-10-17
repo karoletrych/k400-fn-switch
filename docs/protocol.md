@@ -113,8 +113,14 @@ request:  11 01 09 19 01 00 00 ...
 response: 11 01 09 19 01 01 ...
 ```
 
-The device stores the new state in non-volatile memory, so it survives power
-cycles, receiver re-plugging, and reboots.
+The device stores the new state in its own memory, not in the host operating
+system. Closing the tool, unplugging the receiver, or rebooting Windows does not
+change it.
+
+Some K400 Plus firmware nevertheless resets the value after a long idle period
+or when the keyboard is switched off. This has been reported by multiple users
+and is a keyboard firmware behavior; re-send the command after the keyboard
+wakes if needed.
 
 ## Error replies
 

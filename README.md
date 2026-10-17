@@ -4,8 +4,10 @@ A tiny Windows command-line tool that switches the Logitech K400 Plus F-key row
 between standard **F1-F12** keys and **media/special** keys — without Logi
 Options+.
 
-**No installation. No background process. No admin rights. No network access.**
-The setting is written to the keyboard's own memory, so it survives reboots.
+**No installation. No background service. No admin rights. No network access.**
+The setting is written to the keyboard itself. On some K400 Plus firmware it is
+forgotten when the keyboard sleeps or is powered off, in which case just run the
+tool again (the included shortcut makes that a double-click).
 
 [Download the latest release](https://github.com/karoletrych/k400-fn-switch/releases/latest)
 
@@ -27,6 +29,7 @@ K400Fn media           Make the media/special keys primary
 K400Fn toggle          Flip the current mode
 K400Fn status          Show the current mode
 K400Fn status -v       Also show HID discovery details
+K400Fn fkeys --quiet   Silent, for Task Scheduler
 K400Fn --help          Show help
 ```
 
@@ -51,6 +54,15 @@ The release zip also contains three double-click helpers:
 
 Each one runs the tool and waits for a key press so the window does not vanish.
 
+For keyboards that forget the setting after sleeping, the zip also includes:
+
+- `Auto F-keys.cmd` — installs a scheduled task that re-applies F-keys every
+  15 minutes while you are logged on.
+- `Remove auto F-keys.cmd` — removes that scheduled task.
+
+The scheduled task forces F-keys. Remove it if you want to keep media keys
+selected for a while.
+
 ## Supported hardware
 
 Tested with:
@@ -67,6 +79,21 @@ The K400 Plus does not have the `Fn+Esc` hardware lock found on some other
 Logitech keyboards. Logitech's documented method for this model is their
 software, which is what this project replaces.
 
+### The K400 Plus sleep quirk
+
+Some K400 Plus firmware resets the Fn inversion setting after a long period of
+inactivity or when the keyboard is switched off. This is a keyboard firmware
+behavior, not something the tool can permanently override.
+
+If your keyboard forgets the setting, run `K400Fn.exe` again. The release zip
+includes `Use F-keys.cmd`, which you can pin to the taskbar or Start menu. You
+can also schedule `K400Fn.exe fkeys --quiet` with Task Scheduler if you want it
+re-applied automatically.
+
+The setting is still a real device setting: it is not lost when you unplug the
+receiver, close the tool, or reboot Windows. It only resets when the keyboard
+firmware decides to reset it.
+
 ## How it works
 
 The keyboard is a HID++ 2.0 device. The tool:
@@ -82,8 +109,9 @@ The keyboard is a HID++ 2.0 device. The tool:
 The protocol details and example packets are in
 [docs/protocol.md](docs/protocol.md).
 
-The value is stored in the keyboard itself (HID++ feature `0x40A2` is
-non-volatile), so the tool does not need to run at startup.
+The value is stored by the keyboard. The tool does not need to run in the
+background, although some K400 Plus firmware resets the value after a long idle
+period (see above).
 
 ## Build from source
 
@@ -115,8 +143,11 @@ The result is `artifacts\k400-fn-switch-win-x64.zip`.
 
 **The tool worked, but the mode changed back later.**
 
-- Logi Options+ or another Logitech program may be re-applying its own saved
-  setting. Quit it, set the mode, and try again.
+- Some K400 Plus firmware resets the setting after a long idle period or when
+  the keyboard is turned off. Just run the tool again, or pin `Use F-keys.cmd`
+  somewhere convenient.
+- Logi Options+ or another Logitech program may also be re-applying its own
+  saved setting. Quit it, set the mode, and try again.
 
 **I want to remove it completely.**
 
