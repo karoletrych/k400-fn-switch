@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>K400Fn</AssemblyName>
+    <RootNamespace>K400Fn</RootNamespace>
+    <Version>1.0.0</Version>
+    <AssemblyTitle>K400 Fn Switch</AssemblyTitle>
+    <Product>K400 Fn Switch</Product>
+    <Description>Switch the Logitech K400 Plus F-key row between F1-F12 and media keys without Logi Options+.</Description>
+    <Authors>Karol Etrych</Authors>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <DebugType>none</DebugType>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishTrimmed>true</PublishTrimmed>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+</Project>
